@@ -3,6 +3,9 @@ import HashMap "mo:base/HashMap";
 import Text "mo:base/Text";
 import Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
+import Iter "mo:base/Iter";
+import Hash "mo:base/Hash";
+
 
 actor Token {
     // assigning the owner of all the tokens created as "Principal"
@@ -15,11 +18,13 @@ actor Token {
     var symbol : Text = "ANGL";
 
 
-    // creating storage and configuration in that storage by id and value. 
-    var balances = HashMap.HashMap<Principal, Nat>(1, Principal.equal, Principal.hash); 
+    private stable var balanceEntries: [(Principal, Nat)] =[ ]; 
 
-    // placing the owner inside the balance with the total value included  
-    balances.put(owner, totalSupply); 
+    // creating storage and configuration in that storage by id and value. 
+    private var balances = HashMap.HashMap<Principal, Nat>(1, Principal.equal, Principal.hash); 
+   if(balances.size() < 1){
+         balances.put(owner, totalSupply); 
+    };
 
     // Query to understand who owns what 
     public query func balanceOf(who: Principal) :async Nat {
@@ -39,14 +44,14 @@ actor Token {
         // Debug.print(debug_show(msg.caller)); 
         if (balances.get(msg.caller) == null) {
              let amount = 10000;
-             balances.put(msg.caller, amount);
-             return "success";
+             let result = await transfer(msg.caller, amount);
+             return result;
         } else {
             return "Already Claimed";
         }
     };
 
-    public shared(msg) func tranfer(to:Principal, amount: Nat): async Text{
+    public shared(msg) func transfer(to:Principal, amount: Nat): async Text{
         let fromBalance = await balanceOf(msg.caller); 
         if (fromBalance > amount){
             let newBalanceFrom: Nat  =  fromBalance - amount; 
@@ -60,5 +65,15 @@ actor Token {
         } else {
             return "Insufficient funds"
         }
-    }
+    };
+
+    system func preupgrade(){
+        balanceEntries := Iter.toArray(balances.entries()); 
+    };
+    
+    system func postupgrade(){
+        balances := HashMap.fromIter<Principal, Nat>(balanceEntries.vals(), 1, Principal.equal, Principal.hash); 
+        if(balances.size() < 1){
+         balances.put(owner, totalSupply); 
+    }; };
 };

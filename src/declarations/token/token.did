@@ -2,5 +2,5 @@ service : {
   balanceOf: (principal) -> (nat) query;
   getSymbol: () -> (text) query;
   payOut: () -> (text);
-  tranfer: (principal, nat) -> (text);
+  transfer: (principal, nat) -> (text);
 }
